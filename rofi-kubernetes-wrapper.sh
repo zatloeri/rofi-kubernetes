@@ -1,6 +1,4 @@
 #!/bin/bash
-ROFI_KUBERNETES_PATH="/home/erik/.config/rofi/libs/rofi-kubernetes.sh"
-CUSTOM_THEME_PATH="/home/erik/.config/rofi/themes/search-slate.rasi"
 
 declare -A OPTIONS
 declare -A RESOURCES
@@ -47,28 +45,40 @@ gen_resource_list() {
     done
 }
 
-gen_namespace_list() {
-    kubectl get namespaces | awk 'NR>1' | awk '{print $1;}'
+fetch_namespace_list() {
+    kubectl get namespaces | awk 'NR>1'
 }
 
-option=$( gen_options_list | rofi -p option -dmenu -mesg "Choose an <b>option</b>" -no-custom -theme $CUSTOM_THEME_PATH)
+option=$( gen_options_list | rofi -p option -dmenu -mesg "Choose an <b>option</b>" -no-custom)
 
 if [[ -z "$option" ]]; then
     exit
 fi
 
 if [[ -z ${CUSTOM_NONRESOURCE_OPTIONS[$option]} ]]; then
-    resource=$( gen_resource_list | rofi -dmenu -p resource -mesg "Choose a <b>resource</b>" -no-custom -theme $CUSTOM_THEME_PATH)
+    resource=$( gen_resource_list | rofi -dmenu -p resource -mesg "Choose a <b>resource</b>" -no-custom)
     if [[ -z "$resource" ]]; then
         exit
     fi  
 fi
 
-namespace=$( gen_namespace_list | rofi -dmenu -p namespace -mesg "Choose a <b>namespace</b>" -no-custom -theme $CUSTOM_THEME_PATH)
+NAMESPACE_LIST=$( fetch_namespace_list ) 
+
+if [[ $? == 1 ]]; then
+    rofi -e "kubectl failed to get namespaces. Check if kubectl is setup correctly."
+    exit
+fi
+
+namespace=$(  echo -e -n "$NAMESPACE_LIST" | awk '{print $1;}' | rofi -kb-custom-1 "Control+c" -dmenu -p namespace -mesg "Choose a <b>namespace</b>" -no-custom)
+
+LAST_EXIT_CODE=$?
+echo "Exit code was $?";
 
 if [[ -z "$namespace" ]]; then
     exit
 fi
+
+COMMAND_TO_EXEC="${OPTIONS[$option]} ${RESOURCES[$resource]} -n $namespace"
 
 if [[ "$option" == "$CUSTOM_DELETE_ALL" ]]; then
     COMMAND_TO_EXEC="echo \"deleteing everything in $namespace\""
@@ -76,19 +86,17 @@ if [[ "$option" == "$CUSTOM_DELETE_ALL" ]]; then
     do
         COMMAND_TO_EXEC="$COMMAND_TO_EXEC && ${CUSTOM_NONRESOURCE_OPTIONS[$option]} $i -n $namespace"
     done
-    gnome-terminal -- bash -i -c "export HISTFILE=~/.bash_history\
-        && set -o history\
-        && history -s \"${COMMAND_TO_EXEC}\"\
-        && history -a\
-        && ${COMMAND_TO_EXEC}\
-        ;exec bash"  
-    exit 0
+fi
+
+if [[ $LAST_EXIT_CODE == 10 ]]; then
+    echo "$COMMAND_TO_EXEC" | xclip -selection c
+    exit
 fi
 
 gnome-terminal -- bash -i -c "export HISTFILE=~/.bash_history\
  && set -o history\
- && history -s \"${OPTIONS[$option]} ${RESOURCES[$resource]} -n $namespace\"\
+ && history -s \"$COMMAND_TO_EXEC\"\
  && history -a\
- && ${OPTIONS[$option]} ${RESOURCES[$resource]} -n $namespace\
+ && $COMMAND_TO_EXEC\
  ;exec bash"  
 
