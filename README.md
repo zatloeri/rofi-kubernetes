@@ -17,6 +17,7 @@ For now this simply starts new terminal and appends the command that is being ru
 Your system must have:
 - [rofi](https://github.com/davatorium/rofi) as you would expect.
 - bash
+- xclip
 
 # Usage
 
