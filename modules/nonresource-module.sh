@@ -1,7 +1,8 @@
 #!/bin/bash
-source lib/kubectl-commands.sh
-source constants/options.sh
-source constants/resources.sh
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+source $DIR/../lib/kubectl-commands.sh
+source $DIR/../constants/options.sh
+source $DIR/../constants/resources.sh
 option=$1
 
 NAMESPACE_LIST=$( fetch_namespace_list ) 

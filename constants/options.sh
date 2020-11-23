@@ -1,3 +1,4 @@
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 declare -A OPTIONS
 declare -A CUSTOM_NONRESOURCE_OPTIONS
 
